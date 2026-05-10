@@ -1,0 +1,6 @@
+.env
+*.pkl
+*.pyc
+__pycache__/
+*.sqlite3
+worker/.hf_cache/

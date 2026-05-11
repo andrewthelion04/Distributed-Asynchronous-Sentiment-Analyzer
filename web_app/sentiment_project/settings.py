@@ -16,6 +16,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
     'analyzer',
 ]
 
@@ -48,12 +49,24 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'sentiment_project.wsgi.application'
+ASGI_APPLICATION = 'sentiment_project.asgi.application'
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.environ.get('DB_PATH', BASE_DIR / 'db.sqlite3'),
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
+}
+
+_REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost')
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [(_REDIS_HOST, 6379)],
+        },
+    },
 }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -72,8 +85,11 @@ STATIC_URL = '/static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# RabbitMQ — citite din variabile de mediu injectate de Docker Compose
 RABBITMQ_HOST = os.environ.get('RABBITMQ_HOST', 'localhost')
 RABBITMQ_USER = os.environ.get('RABBITMQ_USER', 'guest')
 RABBITMQ_PASS = os.environ.get('RABBITMQ_PASS', 'guest')
-RABBITMQ_QUEUE = 'reviews'
+RABBITMQ_QUEUE = 'live_chat_queue'
+
+REDIS_HOST = _REDIS_HOST
+
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')

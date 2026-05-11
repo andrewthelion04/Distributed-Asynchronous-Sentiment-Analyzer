@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Twitch Live Sentiment Analyzer</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0e0e10; color: #efeff1; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      background: #18181b; border-bottom: 1px solid #2a2a2d;
+      padding: 12px 24px; display: flex; align-items: center; gap: 14px;
+    }
+    .header-logo { color: #9147ff; font-size: 1.3rem; }
+    header h1 { font-size: 1.05rem; font-weight: 600; flex: 1; }
+
+    /* ── Layout ── */
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px 18px; }
+    .grid { display: grid; grid-template-columns: 1fr 340px; gap: 18px; }
+    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+
+    /* ── Input row ── */
+    .input-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .input-row input {
+      flex: 1; min-width: 220px;
+      padding: 10px 14px; background: #18181b; border: 1px solid #3a3a3d;
+      border-radius: 6px; color: #efeff1; font-size: 0.92rem; outline: none;
+      transition: border-color .2s;
+    }
+    .input-row input:focus { border-color: #9147ff; }
+    .input-row input::placeholder { color: #666; }
+
+    button {
+      padding: 9px 18px; border: none; border-radius: 6px; font-size: .88rem;
+      font-weight: 600; cursor: pointer; transition: opacity .15s, transform .1s;
+      white-space: nowrap;
+    }
+    button:active { transform: scale(.97); }
+    #start-btn { background: #9147ff; color: #fff; }
+    #start-btn:hover { opacity: .88; }
+    #stop-btn  { background: #2a2a2d; color: #efeff1; border: 1px solid #3a3a3d; }
+    #stop-btn:hover:not(:disabled) { background: #3a3a3d; }
+    #stop-btn:disabled { opacity: .38; cursor: default; }
+    #tldr-btn  { background: #1f6feb; color: #fff; }
+    #tldr-btn:hover { opacity: .88; }
+
+    /* ── Streamer profile ── */
+    #profile-bar {
+      display: flex; align-items: center; gap: 12px;
+      background: #18181b; border-radius: 8px; padding: 10px 14px;
+      margin-bottom: 16px; min-height: 56px;
+    }
+    #profile-bar.hidden { display: none; }
+    #profile-avatar { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; background: #2a2a2d; }
+    #profile-name { font-weight: 700; font-size: 1rem; color: #9147ff; }
+    #profile-label { font-size: .78rem; color: #8a8a9a; }
+
+    /* ── Status ── */
+    #status-bar { font-size: .8rem; color: #8a8a9a; margin-bottom: 18px; display: flex; align-items: center; gap: 6px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #444; flex-shrink: 0; }
+    .dot.on  { background: #00b860; box-shadow: 0 0 6px #00b860; }
+    .dot.err { background: #e91916; }
+
+    /* ── Sentiment cards ── */
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+    .card {
+      background: #18181b; border-radius: 8px; padding: 14px 10px;
+      text-align: center; border-top: 3px solid transparent;
+    }
+    .card.positive { border-color: #00b860; }
+    .card.negative { border-color: #e91916; }
+    .card.neutral  { border-color: #f5a623; }
+    .card .num { font-size: 2rem; font-weight: 700; line-height: 1; }
+    .card.positive .num { color: #00b860; }
+    .card.negative .num { color: #e91916; }
+    .card.neutral  .num { color: #f5a623; }
+    .card .lbl { font-size: .72rem; color: #8a8a9a; text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; }
+    .card .bar { height: 3px; background: #2a2a2d; border-radius: 2px; margin-top: 10px; }
+    .card .fill { height: 100%; border-radius: 2px; width: 0%; transition: width .4s; }
+    .card.positive .fill { background: #00b860; }
+    .card.negative .fill { background: #e91916; }
+    .card.neutral  .fill { background: #f5a623; }
+    .card .pct { font-size: .73rem; color: #8a8a9a; margin-top: 4px; }
+
+    /* ── Meta row ── */
+    .meta { display: flex; gap: 18px; font-size: .8rem; color: #8a8a9a; margin-bottom: 16px; }
+    .meta strong { color: #efeff1; }
+
+    /* ── Section titles ── */
+    .sec-title { font-size: .75rem; color: #8a8a9a; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+
+    /* ── Chat log ── */
+    #chat-log {
+      background: #18181b; border-radius: 8px; padding: 8px;
+      height: 340px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px;
+    }
+    #chat-log::-webkit-scrollbar { width: 4px; }
+    #chat-log::-webkit-scrollbar-thumb { background: #3a3a3d; border-radius: 2px; }
+
+    .msg {
+      display: flex; align-items: baseline; gap: 7px;
+      padding: 4px 7px; border-radius: 4px; font-size: .84rem;
+      border-left: 3px solid transparent;
+      animation: fadein .15s ease;
+    }
+    @keyframes fadein { from { opacity:0; transform: translateY(3px); } to { opacity:1; transform:none; } }
+    .msg.sentiment-pos { border-color: #00b860; background: rgba(0,184,96,.06); }
+    .msg.sentiment-neg { border-color: #e91916; background: rgba(233,25,22,.06); }
+    .msg.sentiment-neu { border-color: #f5a623; background: rgba(245,166,35,.06); }
+
+    .badge {
+      font-size: .66rem; padding: 1px 5px; border-radius: 3px;
+      font-weight: 700; flex-shrink: 0; letter-spacing: .03em;
+    }
+    /* theme badges */
+    .badge.hype     { background: rgba(255,165,0,.25); color: #ffa500; }
+    .badge.spam     { background: rgba(150,150,150,.2); color: #aaa; }
+    .badge.technical{ background: rgba(30,130,255,.25); color: #5eb0ff; }
+    .badge.chat     { background: rgba(145,71,255,.2); color: #c4a0ff; }
+
+    .msg .user { color: #9147ff; font-weight: 600; flex-shrink: 0; font-size: .82rem; }
+    .msg .text { color: #dedee3; word-break: break-word; }
+
+    /* ── Sidebar charts ── */
+    .sidebar { display: flex; flex-direction: column; gap: 16px; }
+    .chart-box { background: #18181b; border-radius: 8px; padding: 14px; }
+    .chart-box canvas { width: 100% !important; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.7); z-index: 100;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: #18181b; border: 1px solid #3a3a3d; border-radius: 12px;
+      padding: 26px; max-width: 520px; width: 90%; position: relative;
+    }
+    .modal-box h3 { font-size: 1rem; margin-bottom: 14px; color: #9147ff; }
+    #modal-text { font-size: .9rem; line-height: 1.6; color: #dedee3; }
+    #modal-meta { font-size: .75rem; color: #8a8a9a; margin-top: 10px; }
+    .modal-close {
+      position: absolute; top: 12px; right: 14px;
+      background: none; border: none; color: #8a8a9a; font-size: 1.1rem;
+      cursor: pointer; padding: 4px 8px;
+    }
+    .modal-close:hover { color: #efeff1; }
+
+    /* spinner */
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid #444; border-top-color: #9147ff;
+      border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="header-logo">&#9654;</span>
+  <h1>Twitch Live Sentiment Analyzer</h1>
+</header>
+
+<div class="container">
+
+  <!-- Input -->
+  <div class="input-row">
+    <input id="twitch-url" type="text" placeholder="https://twitch.tv/channel  sau  channel" />
+    <button id="start-btn">&#9654; Start</button>
+    <button id="stop-btn" disabled>&#9632; Stop</button>
+    <button id="tldr-btn">&#128203; TL;DR</button>
+  </div>
+
+  <!-- Streamer profile -->
+  <div id="profile-bar" class="hidden">
+    <img id="profile-avatar" src="" alt="avatar" />
+    <div>
+      <div id="profile-name"></div>
+      <div id="profile-label">Live chat analysis</div>
+    </div>
+  </div>
+
+  <!-- Status -->
+  <div id="status-bar">
+    <span class="dot" id="ws-dot"></span>
+    <span id="status-text">Neconectat</span>
+  </div>
+
+  <!-- Sentiment cards -->
+  <div class="cards">
+    <div class="card positive">
+      <div class="num" id="pos-count">0</div>
+      <div class="lbl">Pozitive</div>
+      <div class="bar"><div class="fill" id="pos-fill"></div></div>
+      <div class="pct" id="pos-pct">0%</div>
+    </div>
+    <div class="card negative">
+      <div class="num" id="neg-count">0</div>
+      <div class="lbl">Negative</div>
+      <div class="bar"><div class="fill" id="neg-fill"></div></div>
+      <div class="pct" id="neg-pct">0%</div>
+    </div>
+    <div class="card neutral">
+      <div class="num" id="neu-count">0</div>
+      <div class="lbl">Neutre</div>
+      <div class="bar"><div class="fill" id="neu-fill"></div></div>
+      <div class="pct" id="neu-pct">0%</div>
+    </div>
+  </div>
+
+  <!-- Meta -->
+  <div class="meta">
+    <span>Total: <strong id="total-count">0</strong></span>
+    <span>Hype: <strong id="velocity-val">0</strong> msg/sec</span>
+    <span>Spam: <strong id="spam-count">0</strong></span>
+  </div>
+
+  <!-- Main grid -->
+  <div class="grid">
+
+    <!-- Chat log -->
+    <div>
+      <div class="sec-title">Chat live</div>
+      <div id="chat-log"></div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+
+      <!-- Hype Meter -->
+      <div class="chart-box">
+        <div class="sec-title">Hype Meter (msg/sec)</div>
+        <canvas id="hype-chart" height="120"></canvas>
+      </div>
+
+      <!-- Top Words -->
+      <div class="chart-box">
+        <div class="sec-title">Top Cuvinte</div>
+        <canvas id="words-chart" height="160"></canvas>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- TL;DR Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box">
+    <button class="modal-close" id="modal-close">&#10005;</button>
+    <h3>&#128203; Context TL;DR</h3>
+    <div id="modal-text">Se genereaza...</div>
+    <div id="modal-meta"></div>
+  </div>
+</div>
+
+<script>
+{% autoescape off %}
+const CSRF = '{{ csrf_token }}';
+const INITIAL_CHANNEL = '{{ active_channel|default:"" }}';
+{% endautoescape %}
+
+// ── State ────────────────────────────────────────────────────────────────────
+const counts = { POSITIVE: 0, NEGATIVE: 0, NEUTRAL: 0 };
+let total = 0, spamCount = 0;
+let ws = null, currentChannel = '';
+const MAX_LOG = 200;
+
+// Velocity chart data — sliding 30s window, one tick per second
+const HYPE_WINDOW = 30;
+const hypeLabels = Array(HYPE_WINDOW).fill('');
+const hypeData   = Array(HYPE_WINDOW).fill(0);
+let lastVelocity = 0;
+
+// ── DOM helpers ──────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function post(url, body) {
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': CSRF },
+    body: new URLSearchParams(body),
+  });
+}
+
+// ── Charts ────────────────────────────────────────────────────────────────────
+const chartDefaults = {
+  animation: false,
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { ticks: { color: '#555' }, grid: { color: '#222' } },
+    y: { ticks: { color: '#555' }, grid: { color: '#222' }, beginAtZero: true },
+  },
+};
+
+const hypeChart = new Chart($('hype-chart').getContext('2d'), {
+  type: 'line',
+  data: {
+    labels: hypeLabels,
+    datasets: [{
+      data: hypeData,
+      borderColor: '#9147ff',
+      backgroundColor: 'rgba(145,71,255,.12)',
+      fill: true,
+      tension: 0.4,
+      pointRadius: 0,
+      borderWidth: 2,
+    }],
+  },
+  options: {
+    ...chartDefaults,
+    scales: {
+      x: { display: false },
+      y: { ticks: { color: '#555' }, grid: { color: '#1e1e20' }, beginAtZero: true },
+    },
+  },
+});
+
+const wordsChart = new Chart($('words-chart').getContext('2d'), {
+  type: 'bar',
+  data: {
+    labels: [],
+    datasets: [{
+      data: [],
+      backgroundColor: 'rgba(145,71,255,.7)',
+      borderRadius: 3,
+    }],
+  },
+  options: {
+    ...chartDefaults,
+    indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#555', maxTicksLimit: 4 }, grid: { color: '#222' }, beginAtZero: true },
+      y: { ticks: { color: '#bbb', font: { size: 11 } }, grid: { color: '#1e1e20' } },
+    },
+  },
+});
+
+// Advance hype chart tick every second
+setInterval(() => {
+  hypeData.shift(); hypeData.push(lastVelocity);
+  hypeLabels.shift(); hypeLabels.push('');
+  hypeChart.update('none');
+}, 1000);
+
+// ── Dashboard state ──────────────────────────────────────────────────────────
+function resetDashboard() {
+  counts.POSITIVE = counts.NEGATIVE = counts.NEUTRAL = 0;
+  total = spamCount = 0;
+  lastVelocity = 0;
+  ['pos','neg','neu'].forEach(p => {
+    $(p+'-count').textContent = '0';
+    $(p+'-fill').style.width = '0%';
+    $(p+'-pct').textContent = '0%';
+  });
+  $('total-count').textContent = '0';
+  $('velocity-val').textContent = '0';
+  $('spam-count').textContent = '0';
+  $('chat-log').innerHTML = '';
+  hypeData.fill(0); hypeChart.update('none');
+  wordsChart.data.labels = []; wordsChart.data.datasets[0].data = []; wordsChart.update('none');
+}
+
+// ── Stats update ─────────────────────────────────────────────────────────────
+function updateSentiment(sentiment) {
+  counts[sentiment]++;
+  total++;
+  ['pos','neg','neu'].forEach((p, i) => {
+    const key = ['POSITIVE','NEGATIVE','NEUTRAL'][i];
+    const pct = total ? Math.round(counts[key] / total * 100) : 0;
+    $(p+'-count').textContent = counts[key];
+    $(p+'-fill').style.width = pct + '%';
+    $(p+'-pct').textContent = pct + '%';
+  });
+  $('total-count').textContent = total;
+}
+
+function updateTopWords(topWords) {
+  if (!topWords || !topWords.length) return;
+  wordsChart.data.labels = topWords.map(w => w[0]);
+  wordsChart.data.datasets[0].data = topWords.map(w => w[1]);
+  wordsChart.update('none');
+}
+
+// ── Chat log ─────────────────────────────────────────────────────────────────
+const THEME_LABELS = { HYPE: 'HYPE', SPAM: 'SPAM', TECHNICAL: 'TECH', CHAT: 'CHAT' };
+const SENTIMENT_CLASS = { POSITIVE: 'sentiment-pos', NEGATIVE: 'sentiment-neg', NEUTRAL: 'sentiment-neu' };
+
+function addMessage(data) {
+  const theme = (data.theme || 'CHAT').toUpperCase();
+  const sentClass = SENTIMENT_CLASS[data.sentiment] || 'sentiment-neu';
+  const log = $('chat-log');
+  const div = document.createElement('div');
+  div.className = `msg ${sentClass}`;
+  div.innerHTML =
+    `<span class="badge ${theme.toLowerCase()}">${THEME_LABELS[theme] || theme}</span>` +
+    `<span class="user">${esc(data.username)}:</span>` +
+    `<span class="text">${esc(data.text)}</span>`;
+  log.appendChild(div);
+  if (log.children.length > MAX_LOG) log.removeChild(log.firstChild);
+  log.scrollTop = log.scrollHeight;
+  if (theme === 'SPAM') { spamCount++; $('spam-count').textContent = spamCount; }
+}
+
+// ── Streamer profile ──────────────────────────────────────────────────────────
+async function loadProfile(channel) {
+  $('profile-name').textContent = channel;
+  $('profile-avatar').src = '';
+  $('profile-bar').classList.remove('hidden');
+  try {
+    const url = `https://decapi.me/twitch/avatar/${channel}`;
+    const resp = await fetch(url);
+    if (resp.ok) {
+      const avatarUrl = (await resp.text()).trim();
+      if (avatarUrl.startsWith('http')) $('profile-avatar').src = avatarUrl;
+    }
+  } catch (_) {}
+}
+
+// ── Status display ───────────────────────────────────────────────────────────
+function setStatus(text, state) {
+  $('status-text').textContent = text;
+  $('ws-dot').className = 'dot' + (state ? ' ' + state : '');
+}
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
+function openWS(channel) {
+  if (ws) {
+    const old = ws;
+    ws = null;
+    old.onmessage = null;  // opreste mesajele stray in timp ce se inchide
+    old.onclose   = null;  // previne ca onclose-ul vechi sa nuleze noul ws
+    old.onerror   = null;
+    old.close();
+  }
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws/chat/${channel}/`);
+
+  ws.onopen  = () => setStatus(`Conectat la #${channel} — asteapta mesaje...`, 'on');
+  ws.onclose = () => { setStatus('WebSocket deconectat', ''); ws = null; };
+  ws.onerror = () => setStatus('Eroare WebSocket', 'err');
+  ws.onmessage = e => {
+    try {
+      const data = JSON.parse(e.data);
+      if (data.type === 'message') {
+        updateSentiment(data.sentiment);
+        addMessage(data);
+        lastVelocity = data.velocity || 0;
+        $('velocity-val').textContent = lastVelocity.toFixed(1);
+        if (data.top_words) updateTopWords(data.top_words);
+      }
+    } catch (_) {}
+  };
+}
+
+// ── Buttons ───────────────────────────────────────────────────────────────────
+$('start-btn').addEventListener('click', async () => {
+  const url = $('twitch-url').value.trim();
+  if (!url) return;
+  const res = await post('/api/start/', { url });
+  const data = await res.json();
+  if (!res.ok) { setStatus('Eroare: ' + (data.error || '?'), 'err'); return; }
+  currentChannel = data.channel;
+  resetDashboard();
+  loadProfile(currentChannel);
+  openWS(currentChannel);
+  $('stop-btn').disabled = false;
+});
+
+$('stop-btn').addEventListener('click', async () => {
+  await post('/api/stop/', {});
+  if (ws) { ws.close(); ws = null; }
+  $('stop-btn').disabled = true;
+  $('profile-bar').classList.add('hidden');
+  setStatus('Oprit', '');
+});
+
+// ── TL;DR ─────────────────────────────────────────────────────────────────────
+$('tldr-btn').addEventListener('click', async () => {
+  const overlay = $('modal-overlay');
+  overlay.classList.add('open');
+  $('modal-text').innerHTML = '<span class="spinner"></span> Se genereaza...';
+  $('modal-meta').textContent = '';
+  try {
+    const res = await post('/api/summary/', {});
+    const data = await res.json();
+    if (res.ok) {
+      $('modal-text').textContent = data.summary;
+      $('modal-meta').textContent = `Bazat pe ${data.count} mesaje recente.`;
+    } else {
+      $('modal-text').textContent = data.error || 'Eroare necunoscuta.';
+    }
+  } catch (e) {
+    $('modal-text').textContent = 'Eroare de retea.';
+  }
+});
+$('modal-close').addEventListener('click', () => $('modal-overlay').classList.remove('open'));
+$('modal-overlay').addEventListener('click', e => { if (e.target === $('modal-overlay')) $('modal-overlay').classList.remove('open'); });
+
+// ── Reconnect if already active ──────────────────────────────────────────────
+if (INITIAL_CHANNEL) {
+  currentChannel = INITIAL_CHANNEL;
+  $('twitch-url').value = INITIAL_CHANNEL;
+  loadProfile(INITIAL_CHANNEL);
+  openWS(INITIAL_CHANNEL);
+  $('stop-btn').disabled = false;
+}
+</script>
+</body>
+</html>

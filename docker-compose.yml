@@ -17,26 +17,39 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   web:
     build: ./web_app
     container_name: web
     command: >
       sh -c "python manage.py migrate &&
-             python manage.py runserver 0.0.0.0:8000"
+             daphne -b 0.0.0.0 -p 8000 sentiment_project.asgi:application"
     volumes:
       - ./web_app:/app
-      - db_data:/db
     ports:
       - "8000:8000"
     environment:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: ${RABBITMQ_USER}
       RABBITMQ_PASS: ${RABBITMQ_PASS}
-      DB_PATH: /db/db.sqlite3
+      REDIS_HOST: redis
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DEBUG: ${DEBUG}
+      GROQ_API_KEY: ${GROQ_API_KEY}
     depends_on:
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   worker:
@@ -45,17 +58,13 @@ services:
     command: python worker.py
     volumes:
       - ./worker:/app
-      - db_data:/db
     environment:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: ${RABBITMQ_USER}
       RABBITMQ_PASS: ${RABBITMQ_PASS}
-      DB_PATH: /db/db.sqlite3
+      REDIS_HOST: redis
     depends_on:
       rabbitmq:
         condition: service_healthy
-      web:
-        condition: service_started
-
-volumes:
-  db_data:
+      redis:
+        condition: service_healthy

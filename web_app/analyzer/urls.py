@@ -2,7 +2,9 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('',                        views.dashboard,      name='dashboard'),
-    path('submit/',                 views.submit_review,  name='submit_review'),
-    path('api/status/<int:pk>/',    views.review_status,  name='review_status'),
+    path('',                views.index,            name='index'),
+    path('api/start/',      views.start_stream,     name='start_stream'),
+    path('api/stop/',       views.stop_stream,      name='stop_stream'),
+    path('api/status/',     views.stream_status,    name='stream_status'),
+    path('api/summary/',    views.generate_summary, name='generate_summary'),
 ]

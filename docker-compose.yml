@@ -29,13 +29,14 @@ services:
       retries: 10
 
   web:
-    build: ./web_app
+    build: ./backend/django_app
     container_name: web
     command: >
       sh -c "python manage.py migrate &&
              daphne -b 0.0.0.0 -p 8000 sentiment_project.asgi:application"
     volumes:
-      - ./web_app:/app
+      - ./backend/django_app:/app
+      - ./frontend:/frontend:ro
     ports:
       - "8000:8000"
     environment:
@@ -46,6 +47,7 @@ services:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DEBUG: ${DEBUG}
       GROQ_API_KEY: ${GROQ_API_KEY}
+      FRONTEND_DIR: /frontend
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -53,11 +55,11 @@ services:
         condition: service_healthy
 
   worker:
-    build: ./worker
+    build: ./backend/worker
     container_name: worker
     command: python worker.py
     volumes:
-      - ./worker:/app
+      - ./backend/worker:/app
     environment:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: ${RABBITMQ_USER}

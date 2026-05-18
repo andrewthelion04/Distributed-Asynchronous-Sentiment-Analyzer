@@ -1,0 +1,177 @@
+{% load static %}<!DOCTYPE html>
+<html lang="ro" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Twitch Live Sentiment Analyzer</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <link rel="stylesheet" href="{% static 'css/theme.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/layout.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/components.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/chat.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/stats.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/charts.css' %}" />
+</head>
+<body data-csrf="{{ csrf_token }}" data-initial-channel="{{ active_channel|default:'' }}">
+
+<div id="dynamic-background"></div>
+
+<header>
+  <span class="header-logo">&#9654;</span>
+  <h1>Twitch Live Sentiment Analyzer</h1>
+  <button id="theme-toggle" class="icon-btn" aria-label="Comută temă" title="Comută temă">&#9788;</button>
+</header>
+
+<div class="container">
+
+  <div class="input-row">
+    <input id="twitch-url" type="text" placeholder="https://twitch.tv/channel  sau  channel" />
+    <button id="start-btn">&#9654; Start</button>
+    <button id="stop-btn" disabled>&#9632; Stop</button>
+  </div>
+
+  <div id="profile-bar" class="hidden">
+    <img id="profile-avatar" src="" alt="avatar" />
+    <div>
+      <div id="profile-name"></div>
+      <div id="profile-label">Live chat analysis</div>
+    </div>
+  </div>
+
+  <div id="status-bar">
+    <span class="dot" id="ws-dot"></span>
+    <span id="status-text">Neconectat</span>
+  </div>
+
+  <div class="action-bar">
+    <button id="tldr-btn" class="action-btn tldr">
+      <span class="ico">&#128203;</span> Generează TL;DR
+    </button>
+    <button id="questions-btn" class="action-btn questions">
+      <span class="ico">&#10067;</span> Extrage Întrebări
+    </button>
+    <button id="vibe-btn" class="action-btn vibe">
+      <span class="ico">&#9889;</span> Vibe Check
+    </button>
+  </div>
+
+  <div class="metrics-grid">
+    <div class="chart-box hype-box">
+      <div class="sec-title-row">
+        <span class="sec-title">Hype Meter (msg/sec)</span>
+      </div>
+      <canvas id="hype-chart"></canvas>
+    </div>
+    <div class="chart-box words-box">
+      <div class="sec-title-row">
+        <span class="sec-title">Top Cuvinte &mdash; click pentru filtrare</span>
+        <span id="filter-chip" class="filter-chip hidden">
+          <span id="filter-chip-word"></span>
+          <button id="filter-chip-clear" aria-label="Anulează filtru">&#10005;</button>
+        </span>
+      </div>
+      <canvas id="words-chart"></canvas>
+    </div>
+  </div>
+
+  <div class="content-grid">
+
+    <div class="chat-panel">
+      <div class="chat-header">
+        <span class="sec-title">Chat Live</span>
+        <div class="chat-controls">
+          <span id="buffered-badge" class="hidden">0 noi</span>
+          <button id="pause-btn">&#9208; Pauză</button>
+        </div>
+      </div>
+      <div id="chat-log"></div>
+    </div>
+
+    <aside class="stats-panel">
+      <div class="sec-title">Audienţă &amp; Velocitate</div>
+
+      <div class="stat-block">
+        <div class="stat-label">
+          <span>Audienţă Organică</span>
+          <strong id="unique-ratio-val">—</strong>
+        </div>
+        <div class="stat-bar"><div class="stat-fill" id="unique-fill"></div></div>
+        <div class="stat-hint">% chatteri unici / mesaje recente — peste 60% = audienţă diversă</div>
+      </div>
+
+      <div class="stat-block">
+        <div class="stat-label">
+          <span>Caps-Lock Ratio</span>
+          <strong id="caps-ratio-val">—</strong>
+        </div>
+        <div class="stat-bar"><div class="stat-fill" id="caps-fill"></div></div>
+        <div class="stat-hint">% MAJUSCULE din litere — peste 40% = hype/rage</div>
+      </div>
+
+      <div class="stat-block">
+        <div class="stat-label"><span>Top 3 MVPs</span></div>
+        <ol class="mvp-list" id="mvp-list">
+          <li class="empty">Aşteptând mesaje...</li>
+        </ol>
+      </div>
+    </aside>
+
+    <aside class="sentiment-panel">
+      <div class="sec-title">Sentiment</div>
+      <div class="mini-cards">
+        <div class="mini-card positive">
+          <div class="mini-num" id="pos-pct">0%</div>
+          <div class="mini-lbl">Poz</div>
+          <div class="mini-bar"><div class="mini-fill" id="pos-fill"></div></div>
+        </div>
+        <div class="mini-card negative">
+          <div class="mini-num" id="neg-pct">0%</div>
+          <div class="mini-lbl">Neg</div>
+          <div class="mini-bar"><div class="mini-fill" id="neg-fill"></div></div>
+        </div>
+        <div class="mini-card neutral">
+          <div class="mini-num" id="neu-pct">0%</div>
+          <div class="mini-lbl">Neu</div>
+          <div class="mini-bar"><div class="mini-fill" id="neu-fill"></div></div>
+        </div>
+      </div>
+      <div class="mini-stats">
+        <div><span>Total</span><strong id="total-count">0</strong></div>
+        <div><span>Hype</span><strong><span id="velocity-val">0</span>/s</strong></div>
+        <div><span>Spam</span><strong id="spam-count">0</strong></div>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box">
+    <button class="modal-close" id="modal-close">&#10005;</button>
+    <h3 id="modal-title">&#128203; Context TL;DR</h3>
+    <div id="modal-text">Se generează...</div>
+    <div id="modal-meta"></div>
+  </div>
+</div>
+
+<!--
+  Load order matters for top-level state:
+    - theme/charts/stats/chat/websocket/background/llm-actions declare
+      functions + per-module state.
+    - app.js (LAST) declares shared helpers + global mutable state, then
+      runs bootstrap synchronously (DOM is fully parsed by this point).
+-->
+<script src="{% static 'js/theme.js' %}"></script>
+<script src="{% static 'js/charts.js' %}"></script>
+<script src="{% static 'js/stats.js' %}"></script>
+<script src="{% static 'js/chat.js' %}"></script>
+<script src="{% static 'js/websocket.js' %}"></script>
+<script src="{% static 'js/background.js' %}"></script>
+<script src="{% static 'js/llm-actions.js' %}"></script>
+<script src="{% static 'js/app.js' %}"></script>
+
+</body>
+</html>

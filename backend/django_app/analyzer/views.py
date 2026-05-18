@@ -39,7 +39,7 @@ def _extract_channel(raw: str) -> str | None:
 
 
 def index(request):
-    return render(request, 'analyzer/index.html', {
+    return render(request, 'index.html', {
         'active_channel': manager.active_channel,
     })
 

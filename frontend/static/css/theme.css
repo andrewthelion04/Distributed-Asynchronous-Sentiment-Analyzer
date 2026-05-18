@@ -1,0 +1,54 @@
+/* Theme variables + reset + body base. */
+
+:root {
+  --bg:            #0e0e10;
+  --surface:       #18181b;
+  --surface-2:     #1f1f23;
+  --surface-hover: #26262a;
+  --border:        #2a2a2d;
+  --border-strong: #3a3a3d;
+  --text:          #efeff1;
+  --text-dim:      #8a8a9a;
+  --text-faint:    #555;
+  --accent:        #9146ff;
+  --accent-hover:  #a970ff;
+  --accent-soft:   rgba(145, 70, 255, 0.14);
+  --pos:           #00b860;
+  --neg:           #e91916;
+  --neu:           #f5a623;
+  --chart-grid:    #1e1e20;
+  --chart-text:    #666;
+  --shadow:        0 4px 14px rgba(0, 0, 0, .35);
+  --tooltip-bg:    rgba(8, 8, 10, .94);
+}
+
+:root[data-theme="light"] {
+  --bg:            #f5f5f7;
+  --surface:       #ffffff;
+  --surface-2:     #f0f0f3;
+  --surface-hover: #e8e8ec;
+  --border:        #e2e2e6;
+  --border-strong: #c8c8cc;
+  --text:          #18181b;
+  --text-dim:      #5c5c66;
+  --text-faint:    #a0a0a8;
+  --accent:        #9146ff;
+  --accent-hover:  #772ce8;
+  --accent-soft:   rgba(145, 70, 255, 0.10);
+  --pos:           #008844;
+  --neg:           #cc1815;
+  --neu:           #c97e10;
+  --chart-grid:    #e8e8ec;
+  --chart-text:    #999;
+  --shadow:        0 4px 14px rgba(0, 0, 0, .08);
+  --tooltip-bg:    rgba(24, 24, 27, .94);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  min-height: 100vh;
+  transition: background .25s ease, color .25s ease;
+}

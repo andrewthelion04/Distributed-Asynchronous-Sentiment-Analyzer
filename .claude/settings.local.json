@@ -2,7 +2,14 @@
   "permissions": {
     "allow": [
       "Bash(python3 *)",
-      "Bash(pip install *)"
+      "Bash(pip install *)",
+      "Bash(git mv *)",
+      "Bash(git rm *)",
+      "Bash(docker compose *)",
+      "Bash(sudo docker compose exec web ls /frontend/static/css /frontend/static/js)",
+      "Bash(git -C /mnt/c/Users/leupe/Distributed-Asynchronous-Sentiment-Analyzer log --oneline -10)",
+      "Bash(git -C /mnt/c/Users/leupe/Distributed-Asynchronous-Sentiment-Analyzer status --short)",
+      "Bash(git -C /mnt/c/Users/leupe/Distributed-Asynchronous-Sentiment-Analyzer branch -vv)"
     ]
   }
 }

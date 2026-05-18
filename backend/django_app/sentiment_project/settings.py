@@ -3,6 +3,11 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# UI assets live outside the Django project (see /frontend at the repo root).
+# In Docker the host's ./frontend is mounted at /frontend; locally we fall back
+# to the repo-relative path so `manage.py runserver` works without env vars.
+FRONTEND_DIR = Path(os.environ.get('FRONTEND_DIR', BASE_DIR.parent.parent / 'frontend'))
+
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-fallback-key')
 
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
@@ -22,6 +27,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -35,7 +41,7 @@ ROOT_URLCONF = 'sentiment_project.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [FRONTEND_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -82,6 +88,11 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
+STATICFILES_DIRS = [FRONTEND_DIR / 'static']
+
+# WhiteNoise: serve static files via Daphne without needing collectstatic.
+# Without this, WhiteNoise only looks in STATIC_ROOT (post-collectstatic).
+WHITENOISE_USE_FINDERS = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

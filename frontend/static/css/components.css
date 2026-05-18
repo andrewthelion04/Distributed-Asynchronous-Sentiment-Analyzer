@@ -1,0 +1,106 @@
+/* Buttons, action-bar, icon-btn, modal, spinner. */
+
+button {
+  padding: 9px 18px; border: none; border-radius: 6px; font-size: .88rem;
+  font-weight: 600; cursor: pointer; transition: opacity .15s, transform .1s, background .15s;
+  white-space: nowrap; font-family: inherit;
+}
+button:active { transform: scale(.97); }
+#start-btn { background: var(--accent); color: #fff; }
+#start-btn:hover { background: var(--accent-hover); }
+#stop-btn  { background: var(--surface-2); color: var(--text); border: 1px solid var(--border-strong); }
+#stop-btn:hover:not(:disabled) { background: var(--surface-hover); }
+#stop-btn:disabled { opacity: .38; cursor: default; }
+
+.icon-btn {
+  background: var(--surface-2); border: 1px solid var(--border-strong);
+  color: var(--text); border-radius: 8px; padding: 7px 11px;
+  font-size: .95rem; cursor: pointer; line-height: 1;
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.icon-btn:hover { background: var(--surface-hover); border-color: var(--accent); }
+.icon-btn:active { transform: scale(.95); }
+
+.action-bar {
+  display: flex; gap: 12px; justify-content: center;
+  margin: 6px 0 22px; flex-wrap: wrap;
+}
+.action-btn {
+  flex: 1 1 220px; max-width: 320px;
+  padding: 14px 22px; font-size: .95rem; font-weight: 700;
+  border-radius: 10px; color: #fff; letter-spacing: .02em;
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  background: var(--btn-bg, var(--accent));
+  border: 1px solid transparent;
+  box-shadow: var(--shadow);
+  transition: transform .15s, box-shadow .2s, opacity .15s, filter .15s;
+}
+.action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow), 0 0 0 4px var(--btn-glow, var(--accent-soft));
+  filter: brightness(1.06);
+}
+.action-btn:active { transform: translateY(0); }
+.action-btn .ico { font-size: 1.15rem; line-height: 1; }
+.action-btn.tldr {
+  --btn-bg: linear-gradient(135deg, #9146ff 0%, #6a2fd3 100%);
+  --btn-glow: rgba(145, 70, 255, .22);
+}
+.action-btn.questions {
+  --btn-bg: linear-gradient(135deg, #1f6feb 0%, #1853b6 100%);
+  --btn-glow: rgba(31, 111, 235, .22);
+}
+.action-btn.vibe {
+  --btn-bg: linear-gradient(135deg, #00b86b 0%, #008844 100%);
+  --btn-glow: rgba(0, 184, 107, .22);
+}
+
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.72); z-index: 100;
+  align-items: center; justify-content: center;
+  backdrop-filter: blur(2px);
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: 12px; padding: 26px;
+  max-width: 540px; width: 90%; position: relative;
+  box-shadow: var(--shadow);
+}
+.modal-box h3 { font-size: 1rem; margin-bottom: 14px; color: var(--accent); }
+#modal-text { font-size: .92rem; line-height: 1.65; color: var(--text); }
+#modal-meta { font-size: .75rem; color: var(--text-dim); margin-top: 12px; }
+#modal-text ul.q-list { list-style: none; padding: 0; margin: 4px 0; }
+#modal-text ul.q-list li {
+  background: var(--surface-2); border-left: 3px solid var(--accent);
+  padding: 9px 12px; margin-bottom: 7px; border-radius: 5px;
+  font-size: .88rem; line-height: 1.45;
+}
+#modal-text .vibe-badge {
+  display: block; text-align: center;
+  font-size: 1.85rem; font-weight: 800;
+  padding: 26px 16px; margin: 6px 0 4px;
+  background: linear-gradient(135deg, var(--accent-soft), transparent);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  color: var(--accent);
+  letter-spacing: .04em;
+  text-transform: capitalize;
+}
+#modal-text .empty {
+  color: var(--text-dim); font-style: italic; font-size: .88rem;
+}
+.modal-close {
+  position: absolute; top: 12px; right: 14px;
+  background: none; border: none; color: var(--text-dim); font-size: 1.1rem;
+  cursor: pointer; padding: 4px 8px;
+}
+.modal-close:hover { color: var(--text); }
+
+.spinner {
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid var(--border-strong); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
